@@ -108,7 +108,7 @@ def request_professional_view(request):
     return Response(serializer.errors, status=400)
 
 
-
+#for admin panel (can accept or reject)
 @api_view(['GET'])
 @permission_classes([IsAdminUser])  # Only admins can access
 def list_pending_professionals(request):
@@ -130,6 +130,16 @@ def update_professional_status(request, pk):
         return Response({'message': f'Professional status updated to {serializer.validated_data["status"]}'})
     return Response(serializer.errors, status=400)
 
+
+@api_view(['GET'])
+@permission_classes([AllowAny])  # Ensure only authenticated users can access
+def list_professionals(request):
+    """
+    Retrieve all professionals' information, including their average review (avis_moyenne).
+    """
+    professionals = Professional.objects.all()  # Fetch all professionals from the database
+    serializer = ProfessionalSerializer(professionals, many=True)  # Serialize the queryset
+    return Response(serializer.data)  # Return serialized data in the response
 
 
 # @api_view(['GET'])

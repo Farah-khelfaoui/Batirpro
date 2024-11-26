@@ -42,7 +42,7 @@ class Professional(models.Model):
         return f"{self.client}"
     def avis_moyenne(self):
         """Retourne la moyenne des avis pour ce professionnel."""
-        avis = AvisProf.objects.filter(professional=self)
+        avis = AvisProf.objects.filter(professionnel=self)
         if avis.exists():
             return sum([a.note for a in avis]) / len(avis)
         return 0.0
@@ -77,7 +77,7 @@ class AvisProf(models.Model):
         unique_together = ['professionnel', 'client']  
 
     def __str__(self):
-        return f"Avis by {self.client.username} for {self.professionnel.username} - Note: {self.note}"
+        return f"Avis by {self.client.username} for {self.professionnel.client.username} - Note: {self.note}"
     
 class Annonce(models.Model):
     id_annonce = models.AutoField(primary_key=True)

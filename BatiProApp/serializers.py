@@ -41,19 +41,17 @@ class ProfessionalRequestSerializer(serializers.ModelSerializer):
         return professional
     
 
+
 class ProfessionalSerializer(serializers.ModelSerializer):
-    avis_moyenne = serializers.SerializerMethodField()  
+    client_username = serializers.CharField(source='client.user.username', read_only=True)
+    client_first_name = serializers.CharField(source='client.user.first_name', read_only=True)
+    client_last_name = serializers.CharField(source='client.user.last_name', read_only=True)
+    client_email = serializers.EmailField(source='client.user.email', read_only=True)
 
     class Meta:
         model = Professional
-        fields = '__all__'  # Include all fields from the model + avis_moyenne
-
-    def get_avis_moyenne(self, obj):
-        """Calculate the average review for this professional."""
-        avis = AvisProf.objects.filter(professional=obj)
-        if avis.exists():
-            return round(sum([a.note for a in avis]) / avis.count(), 2)
-        return 0.0
+        fields = ['id', 'client_username', 'client_first_name', 'client_last_name', 'client_email',
+                  'metiers', 'localisation', 'description_experience', 'avis_moyenne', 'status', 'image_url']
 
 class ProfessionalStatusUpdateSerializer(serializers.ModelSerializer):
     class Meta:

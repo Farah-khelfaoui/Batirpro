@@ -9,7 +9,8 @@ urlpatterns = [
 
     # Client update endpoint
     path('api/client-update/', views.update_client_view, name='update_client'),
-
+    #to get all profs
+    path('api/professionals/', views.list_professionals, name='list_professionals'),
     # Professional request endpoint
     path('api/professional-request/', views.request_professional_view, name='request_professional'),
 
