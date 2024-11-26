@@ -42,9 +42,18 @@ class ProfessionalRequestSerializer(serializers.ModelSerializer):
     
 
 class ProfessionalSerializer(serializers.ModelSerializer):
+    avis_moyenne = serializers.SerializerMethodField()  
+
     class Meta:
         model = Professional
-        fields = '__all__'
+        fields = '__all__'  # Include all fields from the model + avis_moyenne
+
+    def get_avis_moyenne(self, obj):
+        """Calculate the average review for this professional."""
+        avis = AvisProf.objects.filter(professional=obj)
+        if avis.exists():
+            return round(sum([a.note for a in avis]) / avis.count(), 2)
+        return 0.0
 
 class ProfessionalStatusUpdateSerializer(serializers.ModelSerializer):
     class Meta:
