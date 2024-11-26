@@ -1,0 +1,120 @@
+
+* {
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+}
+
+body {
+font-family: Arial, sans-serif;
+color: #333;
+}
+
+.navbar {
+background-color: #f15a22;
+color: white;
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding: 1em;
+}
+
+.navbar .logo {
+font-size: 1.5em;
+font-weight: bold;
+}
+
+.navbar nav a {
+color: white;
+margin: 0 1em;
+text-decoration: none;
+font-size: 1em;
+}
+
+.icons {
+display: flex;
+align-items: center;
+}
+
+.connect-btn {
+background-color: #f15a22;
+color: white;
+border: none;
+padding: 0.5em 1em;
+cursor: pointer;
+margin-right: 1em;
+border-radius: 5px;
+font-size: 1em;
+}
+
+.cart-icon, .heart-icon {
+font-size: 1.5em;
+margin-left: 0.5em;
+}
+
+.hero-section {
+background: url('hero-bg.jpg') no-repeat center center/cover;
+color: white;
+text-align: center;
+padding: 4em 0;
+}
+
+.hero-section h1 {
+font-size: 2.5em;
+}
+
+.hero-section p {
+font-size: 1.2em;
+margin-top: 0.5em;
+}
+
+.explore-btn {
+background-color: #f15a22;
+color: white;
+border: none;
+padding: 0.7em 1.5em;
+font-size: 1em;
+cursor: pointer;
+border-radius: 5px;
+margin-top: 1em;
+}
+
+.buttons-container {
+display: flex;
+justify-content: center;
+gap: 2em;
+margin: 2em 0;
+}
+
+.button {
+background-color: #f2f2f2;
+padding: 1em;
+text-align: center;
+width: 120px;
+border-radius: 5px;
+}
+
+.button img {
+width: 50px;
+height: 50px;
+margin-bottom: 0.5em;
+}
+
+.about-us {
+background-color: #ffffff;
+padding: 2em;
+text-align: center;
+}
+
+.about-us h2 {
+font-size: 2em;
+margin-bottom: 1em;
+}
+
+.about-us p {
+font-size: 1em;
+max-width: 700px;
+margin: 0 auto;
+line-height: 1.5em;
+}
+

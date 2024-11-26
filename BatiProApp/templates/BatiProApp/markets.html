@@ -1,0 +1,178 @@
+{%extends 'main.html' %}
+
+{%block title %}
+Markets
+{%endblock title%}
+
+{%block style %}
+    <style>
+        /* Reset default browser styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    color: #333;
+}
+
+/* Navbar */
+.navbar {
+    background-color: #f15a22;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1em;
+}
+
+.navbar .logo {
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+.navbar nav a {
+    color: white;
+    margin: 0 1em;
+    text-decoration: none;
+    font-size: 1em;
+}
+
+.icons {
+    display: flex;
+    align-items: center;
+}
+
+.connect-btn {
+    background-color: #f15a22;
+    color: white;
+    border: none;
+    padding: 0.5em 1em;
+    cursor: pointer;
+    margin-right: 1em;
+    border-radius: 5px;
+    font-size: 1em;
+}
+
+/* Search Section */
+.search-section {
+    display: flex;
+    justify-content: center;
+    gap: 1em;
+    margin: 2em 0;
+}
+
+.dropdown, .search-input, .search-btn {
+    padding: 0.5em;
+    font-size: 1em;
+    border-radius: 5px;
+    border: none;
+}
+
+.dropdown, .search-input {
+    background-color: #f2f2f2;
+    border: 1px solid #ccc;
+}
+
+.search-btn {
+    background-color: black;
+    color: white;
+    cursor: pointer;
+}
+
+/* Market Offers Section */
+.market-offers {
+    text-align: center;
+    padding: 2em;
+}
+
+.market-offers h2 {
+    font-size: 2em;
+    margin-bottom: 1em;
+}
+
+.offers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1em;
+    margin-top: 1em;
+}
+
+.offer-card {
+    background-color: #f2f2f2;
+    padding: 1em;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.service-icon {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 0.5em;
+}
+
+.offer-card h3 {
+    font-size: 1.2em;
+    margin-bottom: 0.5em;
+}
+
+.offer-card p {
+    font-size: 0.9em;
+    color: #555;
+}
+
+    </style>
+{%endblock style%}
+
+{%block content %}
+    <main>
+        <!-- Search Section -->
+        <section class="search-section">
+            <select class="dropdown">
+                <option selected disabled>Spécialité</option>
+                <!-- Add more options as needed -->
+            </select>
+            <input type="text" placeholder="Nom/Prénom" class="search-input">
+            <button class="search-btn">Recherche</button>
+        </section>
+
+        <!-- Market Offers Section -->
+        <section class="market-offers">
+            <h2>Our Market Offers</h2>
+            <div class="offers-grid">
+                <div class="offer-card">
+                    <img src="service-icon.png" alt="Service Icon" class="service-icon">
+                    <h3>General Construction Services</h3>
+                    <p>Manages all aspects of construction projects, ensuring completion on time and within budget.</p>
+                </div>
+                <div class="offer-card">
+                    <img src="service-icon.png" alt="Service Icon" class="service-icon">
+                    <h3>General Construction Services</h3>
+                    <p>Manages all aspects of construction projects, ensuring completion on time and within budget.</p>
+                </div>
+                <div class="offer-card">
+                    <img src="service-icon.png" alt="Service Icon" class="service-icon">
+                    <h3>General Construction Services</h3>
+                    <p>Manages all aspects of construction projects, ensuring completion on time and within budget.</p>
+                </div>
+                <div class="offer-card">
+                    <img src="service-icon.png" alt="Service Icon" class="service-icon">
+                    <h3>General Construction Services</h3>
+                    <p>Manages all aspects of construction projects, ensuring completion on time and within budget.</p>
+                </div>
+                <div class="offer-card">
+                    <img src="service-icon.png" alt="Service Icon" class="service-icon">
+                    <h3>General Construction Services</h3>
+                    <p>Manages all aspects of construction projects, ensuring completion on time and within budget.</p>
+                </div>
+                <div class="offer-card">
+                    <img src="service-icon.png" alt="Service Icon" class="service-icon">
+                    <h3>General Construction Services</h3>
+                    <p>Manages all aspects of construction projects, ensuring completion on time and within budget.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+{%endblock content %}

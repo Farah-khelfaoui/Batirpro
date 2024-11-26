@@ -1,0 +1,1 @@
+default_auto_config = 'Batiproapp.app.BatiproappConfig'

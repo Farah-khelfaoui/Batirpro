@@ -1,0 +1,34 @@
+{%extends 'main.html' %}
+
+
+{%block title %}Batipro {%endblock title%}
+
+{%block content %}
+    <main>
+        <div class="hero-section">
+            <h1>Bienvenue Batipro</h1>
+            <p>the best platform of our construction aid for you my dear</p>
+            <button class="explore-btn">Explore</button>
+        </div>
+        <div class="buttons-container">
+            <div class="button">
+                <img src="marketplace-icon.png" alt="Marketplace">
+                <p>Marketplace</p>
+            </div>
+            <div class="button">
+                <img src="workforce-icon.png" alt="Mains d'œuvre">
+                <p>Mains d'œuvre</p>
+            </div>
+            <div class="button">
+                <img src="recruitment-icon.png" alt="Recrutement">
+                <p>Recrutement</p>
+            </div>
+        </div>
+        <section class="about-us">
+            <h2>{{m}}</h2>
+            <p>
+                Batipro is a dedicated platform for Algeria’s construction industry, connecting customers with top-quality materials and skilled professionals. Whether you're looking for tiles, plumbing services, or expert craftsmanship, we simplify access to trusted resources with an extensive catalog and seamless delivery options. At Batipro, we’re building a better way to construct—together.
+            </p>
+        </section>
+    </main>
+{% endblock content%}

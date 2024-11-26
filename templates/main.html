@@ -1,0 +1,27 @@
+{%load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <link rel="stylesheet" href="{%static 'css/style.css' %}">
+    {%block style %} {% endblock style %}
+
+    <title>
+        {%block title%} {%endblock title %}
+    </title>
+</head>
+<body>
+        {%include 'nav.html'%}
+        {% if messages %}
+         <ul class="messages">
+            {% for message in messages %}
+            <li>{{ message }} </li>
+            {% endfor %}
+        </ul>
+        {% endif %} 
+    {%block content%}
+
+    {%endblock content %}
+    
+</body>
+</html>
