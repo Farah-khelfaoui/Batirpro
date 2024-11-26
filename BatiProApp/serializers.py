@@ -21,7 +21,12 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
-        fields = ['telephone']
+        fields = ['username', 'email', 'first_name', 'last_name','telephone']  
+
+class MetierSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Metier
+        fields = ['id_metier', 'nom_metier', 'description']
 
 
 class ProfessionalRequestSerializer(serializers.ModelSerializer):
@@ -43,15 +48,11 @@ class ProfessionalRequestSerializer(serializers.ModelSerializer):
 
 
 class ProfessionalSerializer(serializers.ModelSerializer):
-    client_username = serializers.CharField(source='client.user.username', read_only=True)
-    client_first_name = serializers.CharField(source='client.user.first_name', read_only=True)
-    client_last_name = serializers.CharField(source='client.user.last_name', read_only=True)
-    client_email = serializers.EmailField(source='client.user.email', read_only=True)
+    client = ClientSerializer()  # Nested serializer for client details
 
     class Meta:
         model = Professional
-        fields = ['id', 'client_username', 'client_first_name', 'client_last_name', 'client_email',
-                  'metiers', 'localisation', 'description_experience', 'avis_moyenne', 'status', 'image_url']
+        fields = ['id', 'metiers', 'localisation', 'description_experience', 'avis_moyenne', 'status', 'image_url', 'client']
 
 class ProfessionalStatusUpdateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -71,9 +72,3 @@ class ProduitSerializer(serializers.ModelSerializer):
         model = Produit
         fields = '__all__'  # ['id_produit', 'nom', 'description', 'prix', 'categorie']
 
-
-class MetrierSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Metier
-        fields = '__all__'
-        

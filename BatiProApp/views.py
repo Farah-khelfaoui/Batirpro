@@ -141,6 +141,50 @@ def list_professionals(request):
     serializer = ProfessionalSerializer(professionals, many=True)  # Serialize the queryset
     return Response(serializer.data)  # Return serialized data in the response
 
+@api_view(['GET'])
+@permission_classes([AllowAny])  # Ensure only authenticated users can access
+def get_professional_detail(request, pk):
+    """
+    Retrieve detailed information about a specific professional by their ID.
+    """
+    try:
+        professional = Professional.objects.get(pk=pk)  
+    except Professional.DoesNotExist:
+        return Response({'error': 'Professional not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = ProfessionalSerializer(professional)  
+    return Response(serializer.data)  
+
+
+# Vue pour récupérer les clients
+@api_view(['GET'])
+@permission_classes([IsAdminUser]) 
+def list_clients(request):
+    clients = Client.objects.all()
+    serializer = ClientSerializer(clients, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def list_metiers(request):
+    metiers = Metier.objects.all()
+    serializer = MetierSerializer(metiers, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_metier_detail(request, pk):
+
+    try:
+        metier = Metier.objects.get(pk=pk)  
+    except Metier.DoesNotExist:
+        return Response({'error': 'metier not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = MetierSerializer(metier)  
+    return Response(serializer.data)  
+
+
 
 # @api_view(['GET'])
 def home(request):
