@@ -8,6 +8,8 @@ class User(AbstractUser):
 
 class Client(User):
     telephone = models.CharField(max_length=20)
+    image_url = models.URLField(max_length=500, blank=True, null=True)
+
     class Meta:
         db_table = 'clients'
 
@@ -32,9 +34,14 @@ class Professional(models.Model):
     client = models.OneToOneField(Client, on_delete=models.CASCADE, related_name='professional' , null=True)
     metiers = models.ManyToManyField(Metier, related_name='professionals')  # Many-to-many relationship with Metier
     localisation = models.CharField(max_length=500)
+    about_me = models.TextField(default='I am BatiPro Professional')
     description_experience = models.TextField()
+    birth_date = models.DateField(null=True)
+    postal_code = models.CharField(max_length=5 , default='', blank=True)
     avis_moyenne = models.DecimalField(max_digits=3, decimal_places=1, default=0.0)
     status = models.CharField(max_length=50, default='en attente')
+    join_date = models.DateField(auto_now_add=True, null=True)
+    
     image_url = models.URLField(max_length=500, blank=True, null=True)
     class Meta:
         db_table = 'Professionals'
@@ -89,7 +96,7 @@ class Annonce(models.Model):
     date_publication = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.titre} par {self.professionnel.username}"
+        return f"{self.titre} par {self.professionnel.client.username}"
     
 
 class Notification(models.Model):

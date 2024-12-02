@@ -26,7 +26,23 @@ urlpatterns = [
     path('api/professionals-pending/', views.list_pending_professionals, name='list_pending_professionals'),
     path('api/professionals/<int:pk>/update_status/', views.update_professional_status, name='update_professional_status'),
 
-    # Home page endpoint
-    path('', views.home, name='home'),  # Serves the home template at the root URL
-    path('del/', views.dele, name='del'),  # Serves the home template at the root URL
+    # URL to list all reviews for a professional or Create new one 
+    path('api/professionals/<int:prof_id>/review/', views.create_avis_view, name='create_avis'),
+    path('api/professionals/<int:prof_id>/reviews/', views.list_avis_view, name='list_avis'),
+
+    #notifications
+    path('api/notifications/', views.list_notifications_view, name='list_notifications'),
+    path('api/notification/create/', views.create_notification_view, name='create_notification'),
+
+    #annonces
+    path('api/annonces/create/', views.create_annonce_view, name='create_annonce'),  # Create an annonce
+    path('api/annonces/<int:id_prof>/', views.list_annonces_view, name='list_annonces'),  # List all annonces
+    path('api/annonces/<int:annonce_id>/delete/', views.delete_annonce_view, name='delete_annonce'),  # Delete annonce by id
+
+
+
+
+
+
+
 ]

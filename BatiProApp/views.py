@@ -20,11 +20,7 @@ def register_view(request):
     if serializer.is_valid():
         # Save the user instance
         user = serializer.save()
-
-        # Set the password correctly before saving the user
-
-
-        # Create the Client linked to the user
+# Create the Client linked to the user
         Client.objects.create(user_ptr=user,
                               username =user.username,
                               email = user.email)  # Client automatically linked to the User
@@ -84,21 +80,36 @@ def request_professional_view(request):
     # Ensure the current user is a Client and not already a Professional
     if Professional.objects.filter(client=request.user.client).exists():
         return Response({'error': 'You are already a professional'}, status=400)
+    
+    # Extract client-specific fields from the request data
+    first_name = request.data.get('first_name')
+    last_name = request.data.get('last_name')
+    telephone = request.data.get('telephone')
 
-    # Validate the request data with the serializer
     serializer = ProfessionalRequestSerializer(data=request.data)
     if serializer.is_valid():
+        # Update client fields if provided
+        client = request.user.client 
+        if first_name:
+            client.first_name = first_name
+        if last_name:
+            client.last_name = last_name
+        if telephone:
+            client.telephone = telephone
+        client.save()  
+
         # Create a professional instance linked to the current user
-        client = request.user.client
         professional = Professional.objects.create(
-            client = client ,  # Link the professional to the current user
+            client=client,
             localisation=serializer.validated_data['localisation'],
             description_experience=serializer.validated_data['description_experience'],
             image_url=serializer.validated_data.get('image_url'),
+            about_me = serializer.validated_data.get('about_me'),
+            birth_date = serializer.validated_data.get('birth_date'),
+            postal_code = serializer.validated_data.get('postal_code'),
 
         )
         
-        # Set the metiers (many-to-many relationship)
         metiers_data = serializer.validated_data['metiers']
         professional.metiers.set(metiers_data)  # Set the many-to-many relationship
         professional.save()
@@ -184,29 +195,107 @@ def get_metier_detail(request, pk):
     serializer = MetierSerializer(metier)  
     return Response(serializer.data)  
 
+# View to create a new review
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_avis_view(request, prof_id):
+    try:
+        professional = Professional.objects.get(id=prof_id)
+    except Professional.DoesNotExist:
+        return Response({'error': 'Professional not found'}, status=404)
+
+    if AvisProf.objects.filter(professionnel=professional, client=request.user.client).exists():
+        return Response({'error': 'You have already reviewed this professional'}, status=400)
+    print(professional)
+    print(request.user.client)
+
+    serializer = AvisProfSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save(client=request.user.client, professionnel=professional)
+        return Response(serializer.data, status=201)
+    
+    return Response(serializer.errors, status=400)
 
 
-# @api_view(['GET'])
-def home(request):
-    metier1 = Metier.objects.all()
-    metier_ser = MetrierSerializer(metier1 , many=True)
-    reported_data = {
-        'data': metier_ser.data
-    }
-    commande = Commande.objects.get(id=1)
-    livraison = Livraison.objects.get(id=1)
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def list_avis_view(request, prof_id):
+    try:
+        professional = Professional.objects.get(id=prof_id)
+    except Professional.DoesNotExist:
+        return Response({'error': 'Professional not found'}, status=404)
+
+    reviews = AvisProf.objects.filter(professionnel=professional).order_by('-date_avis')
+    serializer = AvisProfSerializer(reviews, many=True)
+    return Response(serializer.data)
 
 
-    print(f"Le Total de Commande: {commande.total()}\nle Frais de livraison:{livraison.frais_livraison}\nLe Total delivraison: {livraison.total()}\n")
-    # return Response(reported_data, status=status.HTTP_200_OK)
-    return render(request,'BatiProApp/home.html',{'m':metier_ser.data})
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])  # Ensuring the user is authenticated
+def list_notifications_view(request):
+    notifications = Notification.objects.filter(id_receveur=request.user.client).order_by('-date_recoi')
+    print(notifications)
+    # Serialize the notifications
+    serializer = NotificationSerializer(notifications, many=True)
 
-from BatiProApp.models import Professional 
-def dele(request):
- # Adjust the import according to your app name and model location
-    Professional.objects.all().delete()
-    print("All Professional records deleted successfully.")
+    # Return the serialized data
+    return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])  # Ensure that the user is authenticated
+def create_notification_view(request):
+    if 'contenu' not in request.data or 'id_receveur' not in request.data:
+        return Response({'error': 'contenu and id_receveur are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    serializer = NotificationSerializer(data=request.data)
+    if serializer.is_valid():
+        notification = serializer.save(id_receveur_id=request.data['id_receveur'])
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_annonce_view(request):
+    """Create a new annonce."""
+    serializer = AnnonceSerializer(data=request.data)
+    if serializer.is_valid():
+        # Ensure the logged-in user is a professional
+        try:
+            professional = request.user.client.professional
+        except Professional.DoesNotExist:
+            return Response({'error': 'You must be a professional to create an annonce.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer.save(professionnel=professional)  
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def list_annonces_view(request,id_prof):
+    try:
+        prof = Professional.objects.get(id=id_prof)
+    except Professional.DoesNotExist:
+            return Response({'error': 'This pk Professional does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    annonces = Annonce.objects.filter(professionnel=prof).order_by('-date_publication')  
+    serializer = AnnonceSerializer(annonces, many=True)
+    return Response(serializer.data)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_annonce_view(request, annonce_id):
+
+    try:
+        annonce = Annonce.objects.get(id_annonce=annonce_id)
+    except Annonce.DoesNotExist:
+        return Response({'error': 'Annonce not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 
+    if annonce.professionnel.client != request.user.client:
+        return Response({'error': 'You can only delete your own annonces.'}, status=status.HTTP_403_FORBIDDEN)
+    
+    annonce.delete()
+    return Response({'message': 'Annonce deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)

@@ -21,7 +21,13 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
-        fields = ['username', 'email', 'first_name', 'last_name','telephone']  
+        fields = ['id','username', 'email', 'first_name', 'last_name','telephone' ,'image_url']  
+
+class ClientGenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Client
+        fields = ['username','first_name', 'last_name' ,'image_url']
+
 
 class MetierSerializer(serializers.ModelSerializer):
     class Meta:
@@ -37,22 +43,28 @@ class ProfessionalRequestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Professional
-        fields = ['metiers', 'localisation', 'description_experience', 'image_url']
+        fields = [
+            'metiers', 'localisation', 'about_me', 'description_experience',
+            'birth_date', 'postal_code', 'image_url'
+        ]
 
     def create(self, validated_data):
+
+        # Extract and set the metiers data
         metiers_data = validated_data.pop('metiers')
+
+        # Create the Professional instance linked to the existing/new Client
         professional = Professional.objects.create(**validated_data)
         professional.metiers.set(metiers_data)  # Set the many-to-many relationship
+
         return professional
     
-
-
 class ProfessionalSerializer(serializers.ModelSerializer):
     client = ClientSerializer()  # Nested serializer for client details
 
     class Meta:
         model = Professional
-        fields = ['id', 'metiers', 'localisation', 'description_experience', 'avis_moyenne', 'status', 'image_url', 'client']
+        fields = ['id', 'metiers', 'localisation', 'description_experience','about_me' , 'birth_date','postal_code', 'avis_moyenne', 'status','join_date', 'image_url', 'client']
 
 class ProfessionalStatusUpdateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -60,15 +72,23 @@ class ProfessionalStatusUpdateSerializer(serializers.ModelSerializer):
         fields = ['status']
 
 
-
-
-class CategorieSerializer(serializers.ModelSerializer):
+class AvisProfSerializer(serializers.ModelSerializer):
+    client = ClientGenSerializer()  # Embed the ClientSerializer
     class Meta:
-        model = Categorie
-        fields = '__all__'  #  ['id_categorie', 'nom', 'description']
+        model = AvisProf
+        fields = ['note','commentaire' , 'date_avis' , 'client']
+        read_only_fields = ['client', 'professionnel']
 
-class ProduitSerializer(serializers.ModelSerializer):
+
+class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Produit
-        fields = '__all__'  # ['id_produit', 'nom', 'description', 'prix', 'categorie']
+        model = Notification
+        fields = ['id_notification', 'contenu', 'date_recoi', 'id_receveur']
+        read_only_fields = ['id_notification', 'date_recoi']  
 
+
+class AnnonceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Annonce
+        fields = ['id_annonce', 'titre', 'contenu', 'vu_par', 'image_url', 'date_publication']
+        read_only_fields = ['professionnel']
