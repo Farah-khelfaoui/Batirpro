@@ -1,5 +1,5 @@
+
 from rest_framework import serializers
-from .models import Produit, Categorie , Metier
 from .models import *
 
 
@@ -37,8 +37,8 @@ class MetierSerializer(serializers.ModelSerializer):
 
 class ProfessionalRequestSerializer(serializers.ModelSerializer):
     metiers = serializers.PrimaryKeyRelatedField(
-        queryset=Metier.objects.all(),  # Allow selecting existing Metier objects
-        many=True  # Since it's a many-to-many field
+        queryset=Metier.objects.all(),  
+        many=True  
     )
 
     class Meta:
@@ -49,28 +49,37 @@ class ProfessionalRequestSerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
-
-        # Extract and set the metiers data
         metiers_data = validated_data.pop('metiers')
-
-        # Create the Professional instance linked to the existing/new Client
         professional = Professional.objects.create(**validated_data)
-        professional.metiers.set(metiers_data)  # Set the many-to-many relationship
+        professional.metiers.set(metiers_data)  
 
         return professional
     
 class ProfessionalSerializer(serializers.ModelSerializer):
     client = ClientSerializer()  
-
+    metiers = MetierSerializer(many=True)
     class Meta:
         model = Professional
         fields = ['id', 'metiers', 'localisation', 'description_experience','about_me' , 'birth_date','postal_code', 'avis_moyenne', 'status','join_date', 'image_url', 'client']
 
 class ProfessionalUpdateSerializer(serializers.ModelSerializer):
+    metiers = serializers.PrimaryKeyRelatedField(
+        queryset=Metier.objects.all(),
+        many=True
+    )
+
     class Meta:
         model = Professional
-        fields = ['metiers', 'description_experience', 'about_me', 'localisation','image_url']
+        fields = ['metiers', 'description_experience', 'about_me', 'localisation', 'image_url']
 
+    def update(self, instance, validated_data):
+        metiers_data = validated_data.pop('metiers', None)  
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value) 
+        if metiers_data:
+            instance.metiers.set(metiers_data)  
+        instance.save()
+        return instance
 class ProfessionalStatusUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Professional
@@ -78,7 +87,7 @@ class ProfessionalStatusUpdateSerializer(serializers.ModelSerializer):
 
 
 class AvisProfSerializer(serializers.ModelSerializer):
-    client = ClientGenSerializer()  # Embed the ClientSerializer
+    client = ClientGenSerializer()  
     class Meta:
         model = AvisProf
         fields = ['note','commentaire' , 'date_avis' , 'client']
