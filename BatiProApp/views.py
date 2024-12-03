@@ -8,6 +8,7 @@ from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from .serializers import *
+from django.db.models import Q
 
 
 
@@ -118,7 +119,19 @@ def request_professional_view(request):
     
     return Response(serializer.errors, status=400)
 
-
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_professional_profile_view(request):
+    try:
+        professional = request.user.client.professional
+    except Professional.DoesNotExist:
+        return Response({'error': 'You are not registered as a professional.'}, status=status.HTTP_404_NOT_FOUND)
+    serializer = ProfessionalUpdateSerializer(professional, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()  
+        return Response({'message': 'Profile updated successfully.'})
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 #for admin panel (can accept or reject)
 @api_view(['GET'])
 @permission_classes([IsAdminUser])  # Only admins can access
@@ -167,7 +180,60 @@ def get_professional_detail(request, pk):
     return Response(serializer.data)  
 
 
-# Vue pour récupérer les clients
+from django.db.models import Q, Count, Case, When, IntegerField
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def search_professionals(request):
+    nom = request.GET.get('nom', '').strip()
+    localisation = request.GET.get('localisation', '').strip()
+    metiers_ids = request.GET.getlist('metiers')  
+        
+    metiers = [int(m_id) for m_id in metiers_ids if m_id.isdigit()]
+
+    professionals = Professional.objects.all()
+    
+    query = Q()
+
+    if nom:
+        query |= Q(client__first_name__icontains=nom) | Q(client__last_name__icontains=nom)
+    
+    if localisation:
+        query |= Q(localisation__icontains=localisation)
+    
+    if metiers_ids:
+        query |= Q(metiers__id_metier__in=metiers)
+
+    professionals = professionals.filter(query).distinct()
+
+    # Ajouter un score basé sur combien de conditions chaque professionnel satisfait
+    professionals = professionals.annotate(
+        match_score=(
+            Case(
+                When(client__first_name__icontains=nom, then=1),
+                When(client__last_name__icontains=nom, then=1),
+                default=0,
+                output_field=IntegerField()
+            ) +
+            Case(
+                When(localisation__icontains=localisation, then=1),
+                default=0,
+                output_field=IntegerField()
+            ) +
+            Case(
+                When(metiers__id_metier__in=metiers, then=1),
+                default=0,
+                output_field=IntegerField()
+            )
+        )
+    )
+
+    professionals = professionals.order_by('-match_score') 
+
+    serializer = ProfessionalSerializer(professionals, many=True)
+    return Response(serializer.data)
+
+
 @api_view(['GET'])
 @permission_classes([IsAdminUser]) 
 def list_clients(request):
@@ -195,7 +261,7 @@ def get_metier_detail(request, pk):
     serializer = MetierSerializer(metier)  
     return Response(serializer.data)  
 
-# View to create a new review
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_avis_view(request, prof_id):
@@ -287,7 +353,6 @@ def list_annonces_view(request,id_prof):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def delete_annonce_view(request, annonce_id):
-
     try:
         annonce = Annonce.objects.get(id_annonce=annonce_id)
     except Annonce.DoesNotExist:

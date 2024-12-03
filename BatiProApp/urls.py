@@ -21,6 +21,7 @@ urlpatterns = [
 
     # Professional request endpoint
     path('api/professional-request/', views.request_professional_view, name='request_professional'),
+    path('api/professional/update/', views.update_professional_profile_view, name='update_professional_profile'),
 
     # Admin-only professional management endpoints
     path('api/professionals-pending/', views.list_pending_professionals, name='list_pending_professionals'),
@@ -38,7 +39,8 @@ urlpatterns = [
     path('api/annonces/create/', views.create_annonce_view, name='create_annonce'),  # Create an annonce
     path('api/annonces/<int:id_prof>/', views.list_annonces_view, name='list_annonces'),  # List all annonces
     path('api/annonces/<int:annonce_id>/delete/', views.delete_annonce_view, name='delete_annonce'),  # Delete annonce by id
-
+    #rechercher
+    path('api/professionals/search/', views.search_professionals, name='search_professionals'),
 
 
 

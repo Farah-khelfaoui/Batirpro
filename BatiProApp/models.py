@@ -32,7 +32,7 @@ class Metier(models.Model):
 
 class Professional(models.Model):
     client = models.OneToOneField(Client, on_delete=models.CASCADE, related_name='professional' , null=True)
-    metiers = models.ManyToManyField(Metier, related_name='professionals')  # Many-to-many relationship with Metier
+    metiers = models.ManyToManyField(Metier, related_name='professionals')  
     localisation = models.CharField(max_length=500)
     about_me = models.TextField(default='I am BatiPro Professional')
     description_experience = models.TextField()

@@ -60,11 +60,16 @@ class ProfessionalRequestSerializer(serializers.ModelSerializer):
         return professional
     
 class ProfessionalSerializer(serializers.ModelSerializer):
-    client = ClientSerializer()  # Nested serializer for client details
+    client = ClientSerializer()  
 
     class Meta:
         model = Professional
         fields = ['id', 'metiers', 'localisation', 'description_experience','about_me' , 'birth_date','postal_code', 'avis_moyenne', 'status','join_date', 'image_url', 'client']
+
+class ProfessionalUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Professional
+        fields = ['metiers', 'description_experience', 'about_me', 'localisation','image_url']
 
 class ProfessionalStatusUpdateSerializer(serializers.ModelSerializer):
     class Meta:
