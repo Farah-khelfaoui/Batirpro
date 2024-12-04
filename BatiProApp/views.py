@@ -1,6 +1,8 @@
 from django.shortcuts import render,HttpResponse
 from .models import *
 from rest_framework import generics , status
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated , AllowAny, IsAdminUser
@@ -180,7 +182,7 @@ def get_professional_detail(request, pk):
     return Response(serializer.data)  
 
 
-from django.db.models import Q, Count, Case, When, IntegerField
+from django.db.models import  Case, When, IntegerField
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -206,7 +208,6 @@ def search_professionals(request):
 
     professionals = professionals.filter(query).distinct()
 
-    # Ajouter un score basé sur combien de conditions chaque professionnel satisfait
     professionals = professionals.annotate(
         match_score=(
             Case(
@@ -297,7 +298,7 @@ def list_avis_view(request, prof_id):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])  # Ensuring the user is authenticated
+@permission_classes([IsAuthenticated]) 
 def list_notifications_view(request):
     notifications = Notification.objects.filter(id_receveur=request.user.client).order_by('-date_recoi')
     print(notifications)
@@ -308,7 +309,7 @@ def list_notifications_view(request):
     return Response(serializer.data)
 
 @api_view(['POST'])
-@permission_classes([AllowAny])  # Ensure that the user is authenticated
+@permission_classes([AllowAny])  
 def create_notification_view(request):
     if 'contenu' not in request.data or 'id_receveur' not in request.data:
         return Response({'error': 'contenu and id_receveur are required.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -327,7 +328,6 @@ def create_annonce_view(request):
     """Create a new annonce."""
     serializer = AnnonceSerializer(data=request.data)
     if serializer.is_valid():
-        # Ensure the logged-in user is a professional
         try:
             professional = request.user.client.professional
         except Professional.DoesNotExist:
@@ -364,3 +364,190 @@ def delete_annonce_view(request, annonce_id):
     
     annonce.delete()
     return Response({'message': 'Annonce deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_marketowner(request):
+    try:
+        client = Client.objects.get(user_ptr=request.user)  # Ensure the client exists
+    except Client.DoesNotExist:
+        return Response({'error': 'User must be registered as a client first.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    serializer = MarketownerSerializer(data=request.data)
+    if serializer.is_valid():
+
+        marketowner = Marketowner.objects.create(
+            client=client,
+            adresse=serializer.validated_data['adresse'],
+            current_marketplace=serializer.validated_data.get('current_marketplace')
+        )
+        
+        return Response({'message': 'Marketowner request submitted, awaiting approval.'}, status=status.HTTP_201_CREATED)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_market_member(request):
+    try:
+        client = Client.objects.get(user_ptr=request.user)
+    except Client.DoesNotExist :
+        return Response({'error': 'User must be registered as a client first.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    serializer = MarketMemberSerializer(data=request.data, context={'request': request})
+    if serializer.is_valid():
+        serializer.save()
+        return Response({'message': 'Market member created successfully.'}, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_marketplace(request):
+    try:
+        client = Client.objects.get(user_ptr=request.user)
+    except Client.DoesNotExist:
+        return Response({'error': 'User must be registered as a client first.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if MarketMember.objects.filter(client=client).exists():
+        return Response({'error': 'User is already a market member.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    serializer = MarketplaceSerializer(data=request.data)
+    if serializer.is_valid():
+        marketplace = serializer.save(status='pending')
+        market_member = MarketMember.objects.create(client=client , current_marketplace = marketplace )
+        marketplace.members.add(market_member)  
+        
+        return Response({'message': 'Marketplace created successfully and pending approval.'}, status=status.HTTP_201_CREATED)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_pending_marketplaces(request):
+    pending_marketplaces = Marketplace.objects.filter(status='pending')
+    serializer = MarketplaceSerializer(pending_marketplaces, many=True)
+    return Response(serializer.data)
+
+@api_view(['PATCH','POST'])
+@permission_classes([IsAdminUser])  # Assuming only admins can approve/reject
+def update_marketplace_status(request, pk):
+    try:
+        marketplace = Marketplace.objects.get(pk=pk)
+    except Marketplace.DoesNotExist:
+        return Response({'error': 'Marketplace not found.'}, status=status.HTTP_404_NOT_FOUND)
+    
+    new_status = request.data.get('status')
+    if new_status not in ['accepted', 'rejected','pending']:
+        return Response({'error': 'Invalid status. Use "accepted" or "rejected" or "pending".'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    marketplace.status = new_status
+    marketplace.save()
+    return Response({'message': f'Marketplace status updated to {new_status}.'})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_market_member(request, marketplace_id):
+    try:
+        marketplace = Marketplace.objects.get(id_marketplace=marketplace_id)
+    except Marketplace.DoesNotExist:
+        return Response({'error': 'Marketplace not found.'}, status=status.HTTP_404_NOT_FOUND)
+    
+    client = request.user.client
+    if not marketplace.members.filter(client=client).exists():
+        return Response({'error': 'You are not authorized to add members to this marketplace.'}, status=status.HTTP_403_FORBIDDEN)
+    
+    # Extract and validate the new client's ID
+    new_client_id = request.data.get('client_id')
+    try:
+        new_client = Client.objects.get(pk=new_client_id)
+    except Client.DoesNotExist:
+        return Response({'error': 'Client not found.'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Create a new MarketMember and associate with the marketplace
+    new_member, created = MarketMember.objects.get_or_create(client=new_client)
+    marketplace.members.add(new_member)
+    
+    return Response({'message': 'Market member added successfully.'}, status=status.HTTP_201_CREATED)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def MarketPlaces(request):
+        marketplaces = Marketplace.objects.prefetch_related('categories', 'avis').all()
+        serializer = MarketplaceSerializer(marketplaces, many=True)
+        return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def MarketplaceDetail(request, pk):
+    marketplace = get_object_or_404(Marketplace, pk=pk)
+
+    marketplace_serializer = MarketplaceSerializer(marketplace)
+
+    annonces = AnnonceMarket.objects.filter(marketplace=marketplace)
+    annonces_serializer = AnnonceSerializer(annonces, many=True)
+    
+    categories = marketplace.categories.all()  
+    categories_serializer = CategorieSerializer(categories, many=True)
+
+    avis = AvisMarket.objects.filter(marketplace=marketplace)
+    avis_serializer = AvisMarketSerializer(avis, many=True)
+    
+
+    data = marketplace_serializer.data
+    data['annonces'] = annonces_serializer.data
+    data['categories'] = categories_serializer.data
+    data['avis'] = avis_serializer.data
+    
+    return Response(data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_avis(request, marketplace_id):
+    try:
+        marketplace = Marketplace.objects.get(pk=marketplace_id)
+    except Marketplace.DoesNotExist:
+        return Response({'error': 'Marketplace not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    if AvisMarket.objects.filter(marketplace=marketplace, client=request.user.client).exists():
+        return Response({'error': 'You have already reviewed this marketplace.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    data = {
+        'marketplace': marketplace_id,
+        'client': request.user.client.id,  
+        'note': request.data.get('note'),
+        'commentaire': request.data.get('commentaire')
+    }
+    serializer = AvisMarketSerializer(data=data)
+    
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_annonce(request, marketplace_id):
+    try:
+        marketplace = Marketplace.objects.get(pk=marketplace_id)
+    except Marketplace.DoesNotExist:
+        return Response({'error': 'Marketplace not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if not marketplace.members.filter(client=request.user.client).exists():
+        return Response({'error': 'You are not a member of this marketplace.'}, status=status.HTTP_403_FORBIDDEN)
+    
+    data = {
+        'titre': request.data.get('titre'),
+        'contenu': request.data.get('contenu'),
+        'image_url': request.data.get('image_url'),
+        'marketplace': marketplace_id
+    }
+    serializer = AnnonceMarketSerializer(data=data)
+    
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

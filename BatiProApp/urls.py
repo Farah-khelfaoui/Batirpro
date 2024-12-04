@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .views import *
 
 urlpatterns = [
     # User authentication and registration endpoints
@@ -36,15 +37,22 @@ urlpatterns = [
     path('api/notification/create/', views.create_notification_view, name='create_notification'),
 
     #annonces
-    path('api/annonces/create/', views.create_annonce_view, name='create_annonce'),  # Create an annonce
-    path('api/annonces/<int:id_prof>/', views.list_annonces_view, name='list_annonces'),  # List all annonces
-    path('api/annonces/<int:annonce_id>/delete/', views.delete_annonce_view, name='delete_annonce'),  # Delete annonce by id
+    path('api/annonces/create/', views.create_annonce_view, name='create_annonce'), 
+    path('api/annonces/<int:id_prof>/', views.list_annonces_view, name='list_annonces'),  
+    path('api/annonces/<int:annonce_id>/delete/', views.delete_annonce_view, name='delete_annonce'),  
     #rechercher
     path('api/professionals/search/', views.search_professionals, name='search_professionals'),
 
 
+    path('api/market_member/create/', views.create_market_member, name='create_market_member'),
+    path('api/marketplace/create/', views.create_marketplace, name='create-marketplace'),
+    path('api/marketplace/pending/', views.get_pending_marketplaces, name='get-pending-marketplaces'),
+    path('api/marketplace/<int:pk>/status/', views.update_marketplace_status, name='update-marketplace-status'),
+    path('api/marketplace/<int:marketplace_id>/add_member/', views.add_market_member, name='add-market-member'),
 
+    path('api/marketplaces/', MarketPlaces, name='marketplace-list'),
+    path('api/marketplaces/<int:pk>/', MarketplaceDetail, name='marketplace-detail'),
 
-
-
+    path('api/marketplace/<int:marketplace_id>/add-avis/', add_avis, name='add-avis'),
+    path('api/marketplace/<int:marketplace_id>/add-annonce/', add_annonce, name='add-annonce'),
 ]

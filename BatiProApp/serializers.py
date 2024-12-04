@@ -106,3 +106,57 @@ class AnnonceSerializer(serializers.ModelSerializer):
         model = Annonce
         fields = ['id_annonce', 'titre', 'contenu', 'vu_par', 'image_url', 'date_publication']
         read_only_fields = ['professionnel']
+
+class MarketownerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Marketowner
+        fields = ['adresse', 'current_marketplace']  # Exclude 'client' as we handle it in the view
+
+    def create(self, validated_data):
+        current_marketplace = validated_data.pop('current_marketplace', None)
+        marketowner = Marketowner.objects.create(**validated_data)  # Create without 'current_marketplace'
+        
+        # Handle the ForeignKey separately
+        if current_marketplace:
+            marketowner.current_marketplace = current_marketplace
+            marketowner.save()
+
+        return marketowner
+
+class MarketplaceSerializer(serializers.ModelSerializer):
+    note = serializers.ReadOnlyField()  # Assure que la note dynamique est incluse
+    class Meta:
+        model = Marketplace
+        fields = ['id_marketplace','nom', 'description', 'categories', 'localisation', 'note', 'map']
+        # extra_kwargs = {
+        #     'note': {'required': False}  
+        # }
+
+class CategorieSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Categorie
+        fields = '__all__'  
+
+class AvisMarketSerializer(serializers.ModelSerializer):
+    client = ClientSerializer(read_only=True)
+    class Meta:
+        model = AvisMarket
+        fields = ['id_avis', 'marketplace', 'client', 'note', 'commentaire', 'date_created']
+        read_only_fields = ['id_avis', 'date_created']
+
+class AnnonceMarketSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AnnonceMarket
+        fields = ['id_annonce', 'titre', 'contenu', 'image_url', 'marketplace', 'vu_par']
+        read_only_fields = ['id_annonce', 'vu_par']
+
+
+class MarketMemberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MarketMember
+        fields = ['client', 'adresse', 'current_marketplace']
+    def create(self, validated_data):
+        client = self.context['request'].user.client  # Get the client associated with the logged-in user
+
+        market_member = MarketMember.objects.create(client=client, **validated_data)
+        return market_member
