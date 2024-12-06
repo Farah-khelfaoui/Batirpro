@@ -124,7 +124,6 @@ class Categorie(models.Model):
 
 
 class Produit(models.Model):
-
     id_produit = models.AutoField(primary_key=True) 
     marketplace = models.ForeignKey('Marketplace', on_delete=models.CASCADE , related_name='produits' ,null=True)
     nom = models.CharField(max_length=255) 
@@ -142,12 +141,10 @@ class Produit(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['nom', 'marketplace'], name='unique_product_in_marketplace')
         ]
-    def avis_moyenne(self):
-        """Retourne la moyenne des avis du produit."""
-        avis = AvisProduit.objects.filter(produit=self)
-        if avis.exists():
-            return sum([a.note for a in avis]) / len(avis)
-        return 0.0
+    def note(self):
+        average = self.avis.aggregate(avg_note=Avg('note'))['avg_note']
+        return round(average, 1) if average else 0.0  # Retourne 0.0 si aucun avis n'existe
+
     def __str__(self):
         return self.nom 
 
@@ -297,3 +294,4 @@ class Livraison(models.Model):
         return self.frais_livraison+self.commande.total()
     def __str__(self):
         return f"Livraison {self.commande.id} - {self.statut}"
+

@@ -55,4 +55,11 @@ urlpatterns = [
 
     path('api/marketplace/<int:marketplace_id>/add-avis/', add_avis, name='add-avis'),
     path('api/marketplace/<int:marketplace_id>/add-annonce/', add_annonce, name='add-annonce'),
+
+    path('api/products/', views.list_products, name='product-list'),  
+    path('api/products/create/', views.create_product, name='product-create'), 
+    path('api/products/<int:pk>/update/', views.update_product, name='product-update'), 
+    path('api/products/<int:pk>/delete/', views.delete_product, name='product-delete'), 
+    path('api/produits/<int:produit_id>/avis/', views.add_product_review, name='add_product_review'),
+    path('api/search_products/', views.search_products, name='search-products'),
 ]

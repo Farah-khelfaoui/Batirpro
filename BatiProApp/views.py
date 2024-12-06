@@ -430,7 +430,7 @@ def get_pending_marketplaces(request):
     return Response(serializer.data)
 
 @api_view(['PATCH','POST'])
-@permission_classes([IsAdminUser])  # Assuming only admins can approve/reject
+@permission_classes([IsAdminUser])  
 def update_marketplace_status(request, pk):
     try:
         marketplace = Marketplace.objects.get(pk=pk)
@@ -456,16 +456,14 @@ def add_market_member(request, marketplace_id):
     client = request.user.client
     if not marketplace.members.filter(client=client).exists():
         return Response({'error': 'You are not authorized to add members to this marketplace.'}, status=status.HTTP_403_FORBIDDEN)
-    
-    # Extract and validate the new client's ID
+
     new_client_id = request.data.get('client_id')
     try:
         new_client = Client.objects.get(pk=new_client_id)
     except Client.DoesNotExist:
         return Response({'error': 'Client not found.'}, status=status.HTTP_404_NOT_FOUND)
     
-    # Create a new MarketMember and associate with the marketplace
-    new_member, created = MarketMember.objects.get_or_create(client=new_client)
+    new_member, created = MarketMember.objects.get_or_create(client=new_client, current_marketplace=marketplace.id_marketplace)
     marketplace.members.add(new_member)
     
     return Response({'message': 'Market member added successfully.'}, status=status.HTTP_201_CREATED)
@@ -520,6 +518,7 @@ def add_avis(request, marketplace_id):
     }
     serializer = AvisMarketSerializer(data=data)
     
+    
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -551,3 +550,93 @@ def add_annonce(request, marketplace_id):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_product(request):
+    member = get_object_or_404(MarketMember, client=request.user)
+    marketplace = member.current_marketplace  
+    
+    data = request.data.copy()
+    data['marketplace'] = marketplace.id_marketplace
+    
+    serializer = ProduitSerializer(data=data)
+    if serializer.is_valid():
+        serializer.save(marketplace=marketplace)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_product(request, pk):
+    member = get_object_or_404(MarketMember, client=request.user)
+    product = get_object_or_404(Produit, pk=pk, marketplace=member.current_marketplace)
+    
+    serializer = ProduitSerializer(product, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_product(request, pk):
+    member = get_object_or_404(MarketMember, client=request.user)
+    product = get_object_or_404(Produit, pk=pk, marketplace=member.current_marketplace)
+    product.delete()
+    return Response({'message': 'Produit supprimé avec succès'}, status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def list_products(request):
+    produits = Produit.objects.all()
+    serializer = ProduitSerializer(produits, many=True)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_product_review(request, produit_id):
+    produit = get_object_or_404(Produit, pk=produit_id)
+
+    if AvisProduit.objects.filter(produit=produit, client=request.user.client).exists():
+        return Response({'error': 'You have already reviewed this product.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    serializer = AvisProduitSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save(produit=produit, client=request.user.client)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def search_products(request):
+    nom = request.GET.get('nom', '').strip()
+    categorie_id = request.GET.get('categorie', '').strip()
+    materiaux = request.GET.get('materiaux', '').strip()
+    sort_by = request.GET.get('sort_by', '').strip()  
+
+    produits = Produit.objects.all()
+
+    query = Q()
+    if nom:
+        query |= Q(nom__icontains=nom)
+    if categorie_id and categorie_id.isdigit():
+        query |= Q(categorie__id=categorie_id)
+    if materiaux:
+        query |= Q(materiaux__icontains=materiaux)
+
+    produits = produits.filter(query).distinct()
+
+
+    produits = produits.annotate(average_note=Avg('avis__note'))
+    print(produits)
+
+    if sort_by == 'prix':
+        produits = produits.order_by('prix')  
+    elif sort_by == 'note':
+        produits = produits.order_by('-average_note')  
+
+    serializer = ProduitSerializer(produits, many=True)
+    return Response(serializer.data)

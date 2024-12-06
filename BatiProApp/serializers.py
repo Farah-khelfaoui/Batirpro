@@ -160,3 +160,23 @@ class MarketMemberSerializer(serializers.ModelSerializer):
 
         market_member = MarketMember.objects.create(client=client, **validated_data)
         return market_member
+
+
+
+class AvisProduitSerializer(serializers.ModelSerializer):
+    client = ClientSerializer(read_only=True)
+    class Meta:
+        model = AvisProduit
+        fields = ['id_avis', 'produit', 'client', 'note', 'commentaire', 'date_avis']
+        read_only_fields = ['id_avis', 'date_avis', 'produit', 'client']  
+
+class ProduitSerializer(serializers.ModelSerializer):
+    marketplace = MarketplaceSerializer(read_only=True)  
+    avis = AvisProduitSerializer( many=True, read_only=True) 
+    note = serializers.ReadOnlyField()  
+
+    class Meta:
+        model = Produit
+        fields = ['id_produit', 'nom', 'description', 'prix', 'disponibilite_stock', 
+                  'categorie', 'dimension', 'poids', 'materiaux', 'image_url','note', 'marketplace','avis']
+        read_only_fields = ['id_produit']
