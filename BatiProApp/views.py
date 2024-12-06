@@ -640,3 +640,4 @@ def search_products(request):
 
     serializer = ProduitSerializer(produits, many=True)
     return Response(serializer.data)
+
