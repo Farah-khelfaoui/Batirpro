@@ -124,7 +124,6 @@ class Categorie(models.Model):
 
 
 class Produit(models.Model):
-
     id_produit = models.AutoField(primary_key=True) 
     marketplace = models.ForeignKey('Marketplace', on_delete=models.CASCADE , related_name='produits' ,null=True)
     nom = models.CharField(max_length=255) 
@@ -142,12 +141,10 @@ class Produit(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['nom', 'marketplace'], name='unique_product_in_marketplace')
         ]
-    def avis_moyenne(self):
-        """Retourne la moyenne des avis du produit."""
-        avis = AvisProduit.objects.filter(produit=self)
-        if avis.exists():
-            return sum([a.note for a in avis]) / len(avis)
-        return 0.0
+    def note(self):
+        average = self.avis.aggregate(avg_note=Avg('note'))['avg_note']
+        return round(average, 1) if average else 0.0  # Retourne 0.0 si aucun avis n'existe
+
     def __str__(self):
         return self.nom 
 
@@ -165,46 +162,62 @@ class AvisProduit(models.Model):
 
     def __str__(self):
         return f"Avis by {self.client.username} for {self.produit.nom} - Note: {self.note}"
-
+    
+from django.db.models import Avg
 class Marketplace(models.Model):
     id_marketplace = models.AutoField(primary_key=True)  # Automatically incrementing primary key
     nom = models.CharField(max_length=100,unique=True)
     description = models.TextField()
     categories = models.ManyToManyField(Categorie, related_name='marketplaces')
     localisation = models.CharField(max_length=255)
-    note = models.DecimalField(max_digits=2, decimal_places=1)
-    owners = models.ManyToManyField('MarketOwner', related_name='marketplaces')  # Reference MarketOwner by string
+    map = models.CharField(default='', max_length=1000)
+    status = models.CharField(max_length=255, default='pending ...')
+    members = models.ManyToManyField('MarketMember', related_name='marketplaces') 
+    @property
+    def note(self):
+        average = self.avis.aggregate(avg_note=Avg('note'))['avg_note']
+        return round(average, 1) if average else 0.0  # Retourne 0.0 si aucun avis n'existe
 
     def __str__(self):
         return self.nom
 
-class MarketOwner(User):
+
+class Marketowner(models.Model):
     id_marketowner = models.AutoField(primary_key=True) 
-    telephone = models.CharField(max_length=20)
+    join = models.DateField(auto_now_add=True, null=True)
+    client = models.OneToOneField(Client, on_delete=models.CASCADE, related_name='Marketowner',null=True)
     adresse = models.CharField(max_length=255)
     current_marketplace = models.ForeignKey(Marketplace, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
-        return self.username
+        return self.client.username
     class Meta:
         db_table = 'marketowners'
-    
 
-    def save(self, *args, **kwargs):
-    # Retrieve previous instance, if any
-        if self.pk:
+class MarketMember(models.Model):
+    id_member = models.AutoField(primary_key=True)
+    client = models.OneToOneField(Client, on_delete=models.CASCADE, related_name='market_member', null=True)
+    adresse = models.CharField(max_length=255)
+    current_marketplace = models.ForeignKey(Marketplace, on_delete=models.SET_NULL, null=True, blank=True)
 
-            previous = MarketOwner.objects.get(pk=self.pk)
-            if previous.current_marketplace and previous.current_marketplace != self.current_marketplace:
-                # Remove from old marketplace
-                previous.current_marketplace.owners.remove(self)
-        
-        # Save the owner first, then add to new marketplace if applicable
-        super().save(*args, **kwargs)
-        
-        if self.current_marketplace:
-            self.current_marketplace.owners.add(self)
-            self.current_marketplace.save()
+    def __str__(self):
+        return f"{self.client.username} - {self.adresse}"
+
+    class Meta:
+        db_table = 'market_members'
+
+class AvisMarket(models.Model):
+    id_avis = models.AutoField(primary_key=True)
+    marketplace = models.ForeignKey(Marketplace, on_delete=models.CASCADE, related_name='avis')
+    client = models.ForeignKey(Client, on_delete=models.CASCADE)
+    note = models.DecimalField(max_digits=2, decimal_places=1)
+    commentaire = models.TextField()
+    date_created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'avis_market'
+        unique_together = ('marketplace', 'client')  # Un client ne peut laisser qu'un avis par marketplace
+
 
 class AnnonceMarket(models.Model):
     id_annonce = models.AutoField(primary_key=True)
@@ -213,6 +226,7 @@ class AnnonceMarket(models.Model):
     marketplace = models.ForeignKey(Marketplace, on_delete=models.CASCADE, related_name='annonces')
     vu_par = models.IntegerField(default=0) 
     image_url = models.CharField(max_length=255)
+    date_created = models.DateField(auto_now_add=True, null=True)
 
     def __str__(self):
         return self.titre
@@ -280,3 +294,4 @@ class Livraison(models.Model):
         return self.frais_livraison+self.commande.total()
     def __str__(self):
         return f"Livraison {self.commande.id} - {self.statut}"
+

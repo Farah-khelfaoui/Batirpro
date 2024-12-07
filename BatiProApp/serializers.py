@@ -1,5 +1,5 @@
+
 from rest_framework import serializers
-from .models import Produit, Categorie , Metier
 from .models import *
 
 
@@ -37,8 +37,8 @@ class MetierSerializer(serializers.ModelSerializer):
 
 class ProfessionalRequestSerializer(serializers.ModelSerializer):
     metiers = serializers.PrimaryKeyRelatedField(
-        queryset=Metier.objects.all(),  # Allow selecting existing Metier objects
-        many=True  # Since it's a many-to-many field
+        queryset=Metier.objects.all(),  
+        many=True  
     )
 
     class Meta:
@@ -49,28 +49,37 @@ class ProfessionalRequestSerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
-
-        # Extract and set the metiers data
         metiers_data = validated_data.pop('metiers')
-
-        # Create the Professional instance linked to the existing/new Client
         professional = Professional.objects.create(**validated_data)
-        professional.metiers.set(metiers_data)  # Set the many-to-many relationship
+        professional.metiers.set(metiers_data)  
 
         return professional
     
 class ProfessionalSerializer(serializers.ModelSerializer):
     client = ClientSerializer()  
-
+    metiers = MetierSerializer(many=True)
     class Meta:
         model = Professional
         fields = ['id', 'metiers', 'localisation', 'description_experience','about_me' , 'birth_date','postal_code', 'avis_moyenne', 'status','join_date', 'image_url', 'client']
 
 class ProfessionalUpdateSerializer(serializers.ModelSerializer):
+    metiers = serializers.PrimaryKeyRelatedField(
+        queryset=Metier.objects.all(),
+        many=True
+    )
+
     class Meta:
         model = Professional
-        fields = ['metiers', 'description_experience', 'about_me', 'localisation','image_url']
+        fields = ['metiers', 'description_experience', 'about_me', 'localisation', 'image_url']
 
+    def update(self, instance, validated_data):
+        metiers_data = validated_data.pop('metiers', None)  
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value) 
+        if metiers_data:
+            instance.metiers.set(metiers_data)  
+        instance.save()
+        return instance
 class ProfessionalStatusUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Professional
@@ -78,7 +87,7 @@ class ProfessionalStatusUpdateSerializer(serializers.ModelSerializer):
 
 
 class AvisProfSerializer(serializers.ModelSerializer):
-    client = ClientGenSerializer()  # Embed the ClientSerializer
+    client = ClientGenSerializer()  
     class Meta:
         model = AvisProf
         fields = ['note','commentaire' , 'date_avis' , 'client']
@@ -97,5 +106,77 @@ class AnnonceSerializer(serializers.ModelSerializer):
         model = Annonce
         fields = ['id_annonce', 'titre', 'contenu', 'vu_par', 'image_url', 'date_publication']
         read_only_fields = ['professionnel']
+
+class MarketownerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Marketowner
+        fields = ['adresse', 'current_marketplace']  # Exclude 'client' as we handle it in the view
+
+    def create(self, validated_data):
+        current_marketplace = validated_data.pop('current_marketplace', None)
+        marketowner = Marketowner.objects.create(**validated_data)  # Create without 'current_marketplace'
         
-        
+        # Handle the ForeignKey separately
+        if current_marketplace:
+            marketowner.current_marketplace = current_marketplace
+            marketowner.save()
+
+        return marketowner
+
+class MarketplaceSerializer(serializers.ModelSerializer):
+    note = serializers.ReadOnlyField()  # Assure que la note dynamique est incluse
+    class Meta:
+        model = Marketplace
+        fields = ['id_marketplace','nom', 'description', 'categories', 'localisation', 'note', 'map']
+        # extra_kwargs = {
+        #     'note': {'required': False}  
+        # }
+
+class CategorieSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Categorie
+        fields = '__all__'  
+
+class AvisMarketSerializer(serializers.ModelSerializer):
+    client = ClientSerializer(read_only=True)
+    class Meta:
+        model = AvisMarket
+        fields = ['id_avis', 'marketplace', 'client', 'note', 'commentaire', 'date_created']
+        read_only_fields = ['id_avis', 'date_created']
+
+class AnnonceMarketSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AnnonceMarket
+        fields = ['id_annonce', 'titre', 'contenu', 'image_url', 'marketplace', 'vu_par']
+        read_only_fields = ['id_annonce', 'vu_par']
+
+
+class MarketMemberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MarketMember
+        fields = ['client', 'adresse', 'current_marketplace']
+    def create(self, validated_data):
+        client = self.context['request'].user.client  # Get the client associated with the logged-in user
+
+        market_member = MarketMember.objects.create(client=client, **validated_data)
+        return market_member
+
+
+
+class AvisProduitSerializer(serializers.ModelSerializer):
+    client = ClientSerializer(read_only=True)
+    class Meta:
+        model = AvisProduit
+        fields = ['id_avis', 'produit', 'client', 'note', 'commentaire', 'date_avis']
+        read_only_fields = ['id_avis', 'date_avis', 'produit', 'client']  
+
+class ProduitSerializer(serializers.ModelSerializer):
+    marketplace = MarketplaceSerializer(read_only=True)  
+    avis = AvisProduitSerializer( many=True, read_only=True) 
+    note = serializers.ReadOnlyField()  
+
+    class Meta:
+        model = Produit
+        fields = ['id_produit', 'nom', 'description', 'prix', 'disponibilite_stock', 
+                  'categorie', 'dimension', 'poids', 'materiaux', 'image_url','note', 'marketplace','avis']
+        read_only_fields = ['id_produit']

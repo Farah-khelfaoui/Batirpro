@@ -13,7 +13,8 @@ admin.site.register(Message)
 # class MarketOwnerAdmin(admin.ModelAdmin):
 #     list_display = ['username', 'current_marketplace']
 admin.site.register(Marketplace)
-admin.site.register(MarketOwner)
+# admin.site.register(Marketowner)
+admin.site.register(MarketMember)
 admin.site.register(AvisProduit)
 admin.site.register(AnnonceMarket)
 admin.site.register(Promotion)
