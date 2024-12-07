@@ -41,6 +41,10 @@ urlpatterns = [
     path('api/annonces/<int:annonce_id>/delete/', views.delete_annonce_view, name='delete_annonce'),  # Delete annonce by id
     #rechercher
     path('api/professionals/search/', views.search_professionals, name='search_professionals'),
+    
+    
+    path('api/home/products/', views.list_products_home, name='home_products'),
+    # path('api/professionals/search/', views.search_professionals, name='search_professionals'),
 
 
 

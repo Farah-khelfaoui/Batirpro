@@ -10,11 +10,17 @@ from django.contrib.auth.models import User
 from .serializers import *
 from django.db.models import Q
 
-
+def process_request(request):
+    print("Incoming Request:")
+    print(f"Method: {request.method}")
+    print(f"Path: {request.path}")
+    print(f"Headers: {request.headers}")
+    print(f"Body: {request.body}")
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([AllowAny]) 
 def register_view(request):
+    print(request.body)
     # Create a serializer for the user registration
     serializer = UserRegistrationSerializer(data=request.data)
 
@@ -23,8 +29,8 @@ def register_view(request):
         user = serializer.save()
 # Create the Client linked to the user
         Client.objects.create(user_ptr=user,
-                              username =user.username,
-                              email = user.email)  # Client automatically linked to the User
+                                username =user.username,
+                                email = user.email)  # Client automatically linked to the User
         user.set_password(request.data['password'])
         user.save()
         return Response({'message': 'User registered successfully, and client created'})
@@ -33,9 +39,11 @@ def register_view(request):
 
 
 
+# linked with the front
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_view(request):
+    process_request(request)
     username = request.data.get('username')
     password = request.data.get('password')
     user = authenticate(username=username, password=password)
@@ -43,9 +51,8 @@ def login_view(request):
         token, created = Token.objects.get_or_create(user=user)
         return Response({'message': 'Login successful', 'token': token.key})
     else:
-        return Response({'error': 'Invalid credentials'}, status=401)
+        return Response({'error': 'User name or password incorrect. Please try again'}, status=401)
 
-# Logout View
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout_view(request):
@@ -364,3 +371,14 @@ def delete_annonce_view(request, annonce_id):
     
     annonce.delete()
     return Response({'message': 'Annonce deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+
+
+# marketplace
+# products
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def list_products_home(request):
+    produits = Produit.objects.all()[:4]
+    serializer = ProduitSerializer(produits, many=True)
+    return Response(serializer.data)

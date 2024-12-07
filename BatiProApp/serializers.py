@@ -97,3 +97,5 @@ class AnnonceSerializer(serializers.ModelSerializer):
         model = Annonce
         fields = ['id_annonce', 'titre', 'contenu', 'vu_par', 'image_url', 'date_publication']
         read_only_fields = ['professionnel']
+        
+        
