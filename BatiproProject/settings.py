@@ -149,7 +149,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 STATICFILES_DIRS = [
-    BASE_DIR / "static",  # This assumes you have a 'static' folder in your base project directory
+    BASE_DIR / "static",  
 ]
 
 # Directory where Django will collect all static files during deployment

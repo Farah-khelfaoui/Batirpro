@@ -658,5 +658,19 @@ def search_products(request):
 @permission_classes([AllowAny])
 def list_products_home(request):
     produits = Produit.objects.all()[:4]
-    serializer = ProduitSerializer(produits, many=True)
-    return Response(serializer.data)
+    product_serializer = ProduitSerializer(produits, many=True)
+    professionals = Professional.objects.all()[:4]  # Fetch all professionals from the database
+    prof_serializer = ProfessionalSerializer(professionals, many=True)  # Serialize the queryset
+    response_data = {
+        'products': product_serializer.data,
+        'professionals': prof_serializer.data
+    }
+    return Response(response_data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])  # Ensure only authenticated users can access
+def list_professionals_home(request):
+    professionals = Professional.objects.all()[:4]  # Fetch all professionals from the database
+    serializer = ProfessionalSerializer(professionals, many=True)  # Serialize the queryset
+    return Response(serializer.data)  # Return serialized data in the response
