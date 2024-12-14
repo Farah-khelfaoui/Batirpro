@@ -87,7 +87,7 @@ class ProfessionalStatusUpdateSerializer(serializers.ModelSerializer):
 
 
 class AvisProfSerializer(serializers.ModelSerializer):
-    client = ClientGenSerializer()  
+    client = ClientGenSerializer(read_only=True)  
     class Meta:
         model = AvisProf
         fields = ['note','commentaire' , 'date_avis' , 'client']

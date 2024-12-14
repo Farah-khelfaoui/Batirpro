@@ -273,6 +273,7 @@ def get_metier_detail(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_avis_view(request, prof_id):
+    print("request data: ",request.data)
     try:
         professional = Professional.objects.get(id=prof_id)
     except Professional.DoesNotExist:
@@ -280,8 +281,9 @@ def create_avis_view(request, prof_id):
 
     if AvisProf.objects.filter(professionnel=professional, client=request.user.client).exists():
         return Response({'error': 'You have already reviewed this professional'}, status=400)
-    print(professional)
-    print(request.user.client)
+    print("professional",professional)
+    print("client",request.user.client)
+    
 
     serializer = AvisProfSerializer(data=request.data)
     if serializer.is_valid():
