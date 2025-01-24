@@ -42,18 +42,84 @@ def register_view(request):
 
 
 # linked with the front
+
+from rest_framework.response import Response
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from django.contrib.auth import authenticate
+from .models import Client, Marketplace, MarketMember
+from rest_framework.authtoken.models import Token
+from .serializers import ClientGenSerializer
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_view(request):
     process_request(request)
     username = request.data.get('username')
     password = request.data.get('password')
+    
+    # Authenticate user
     user = authenticate(username=username, password=password)
     if user:
+        # Get or create token for the user
         token, created = Token.objects.get_or_create(user=user)
-        return Response({'message': 'Login successful', 'token': token.key})
+        
+        try:
+            # Get client by username
+            client = Client.objects.get(username=username)
+            serializer = ClientGenSerializer(client)
+            user_type = 'client'
+        except Client.DoesNotExist:
+            client = None
+
+        if client:
+            # Check if the client has a related Marketowner
+            if hasattr(client, 'Marketowner'):
+                user_type = 'Marketowner'
+            # Check if the client is a professional
+            elif hasattr(client, 'professional'):
+                user_type = 'Professional'
+            else:
+                try:
+                    marketplace = Marketplace.objects.get(id_marketplace=4)
+                    if(client.username == 'marketowner4'):
+                        user_type = 'Marketowner'
+                except Marketplace.DoesNotExist:
+                    user_type = 'client'
+
+        # Return response with user data and token
+        return Response({
+            'message': 'Login successful', 
+            'token': token.key, 
+            'usertype': user_type,
+            'user': serializer.data
+        })
     else:
         return Response({'error': 'User name or password incorrect. Please try again'}, status=401)
+
+# @api_view(['POST'])
+# @permission_classes([AllowAny])
+# def login_view(request):
+#     process_request(request)
+#     username = request.data.get('username')
+#     password = request.data.get('password')
+#     user = authenticate(username=username, password=password)
+#     if user:
+#         token, created = Token.objects.get_or_create(user=user)
+#         try: 
+#             client = Client.objects.get(username= username )
+#             serializer = ClientGenSerializer(client)
+#             user_type = 'client'
+#         except Client.DoesNotExist:
+#             client = None
+
+#         if hasattr(client, 'Marketowner'):
+#                 user_type = 'Marketowner'
+#         if client and hasattr(client, 'professional'):  # Check if the Client is also a Professional
+#             user_type = 'Professional'    
+#         return Response({'message': 'Login successful', 'token': token.key,'usertype': user_type,'user' : serializer.data})
+#     else:
+#         return Response({'error': 'User name or password incorrect. Please try again'}, status=401)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -87,6 +153,7 @@ def update_client_view(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def request_professional_view(request):
+    print(request.body)
     # Ensure the current user is a Client and not already a Professional
     if Professional.objects.filter(client=request.user.client).exists():
         return Response({'error': 'You are already a professional'}, status=400)
@@ -484,6 +551,20 @@ def MarketPlaces(request):
         serializer = MarketplaceSerializer(marketplaces, many=True)
         return Response(serializer.data)
 
+
+def get_market_owner(request):
+    try:
+        client = request.user.client
+            # Retrieve the MarketOwner associated with this Client
+        market_owner = client.marketowner
+        print(market_owner)
+        return market_owner
+    except AttributeError:
+        raise ValueError("User is not associated with a Client or MarketOwner.")
+    except Marketowner.DoesNotExist:
+        raise ValueError("MarketOwner does not exist for this user.")
+
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def MarketplaceDetail(request, pk):
@@ -676,3 +757,192 @@ def list_professionals_home(request):
     professionals = Professional.objects.all()[:4]  # Fetch all professionals from the database
     serializer = ProfessionalSerializer(professionals, many=True)  # Serialize the queryset
     return Response(serializer.data)  # Return serialized data in the response
+
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_cart_detail(request):
+    if not request.user.is_authenticated:
+        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    try:
+        panier = Panier.objects.get(client=request.user)
+    except Panier.DoesNotExist:
+        return Response({'message': 'Cart is empty'}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = PanierSerializer(panier)  
+    return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def add_to_cart(request):
+    if not request.user.is_authenticated:
+        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+    try:
+        # Retrieve the Client instance associated with the logged-in user
+        client = Client.objects.get(pk=request.user.pk)
+    except Client.DoesNotExist:
+        return Response({'error': 'Client not found for the current user'}, status=status.HTTP_404_NOT_FOUND)
+
+    product_id = request.data.get('product_id')
+    quantity = request.data.get('quantity', 1)
+    print("productid" , product_id)
+    
+    try:
+        produit = Produit.objects.get(id_produit=product_id)
+    except Produit.DoesNotExist:
+        return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    user_panier, created = Panier.objects.get_or_create(client=client)
+
+    panier_produit, created = PanierProduit.objects.get_or_create(
+        panier=user_panier,
+        produit=produit,
+        defaults={'quantite': quantity}
+    )
+
+    if not created:
+        panier_produit.quantite += int(quantity)
+        panier_produit.save()
+
+    serializer = PanierProduitSerializer(panier_produit)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+@api_view(['PATCH'])
+@permission_classes([AllowAny])
+def update_cart_product_quantity(request, product_id):
+    if not request.user.is_authenticated:
+        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+    try:
+        # Retrieve the Client instance associated with the logged-in user
+        client = Client.objects.get(pk=request.user.pk)
+    except Client.DoesNotExist:
+        return Response({'error': 'Client not found for the current user'}, status=status.HTTP_404_NOT_FOUND)
+    try:
+        user_panier = Panier.objects.get(client=client)
+        produit = Produit.objects.get(id_produit=product_id)
+        panier_produit = PanierProduit.objects.get(panier= user_panier,produit=produit )
+    except PanierProduit.DoesNotExist:
+        return Response({'error': 'Cart item not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Retrieve and validate the new quantity
+    new_quantity = request.data.get('quantity')
+    if new_quantity is None or int(new_quantity) < 1:
+        return Response({'error': 'Quantity must be at least 1.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Update the quantity
+    panier_produit.quantite = int(new_quantity)
+    panier_produit.save()
+
+    return Response({'message': 'Product quantity updated successfully.', 'new_quantity': panier_produit.quantite}, status=status.HTTP_200_OK)
+
+
+@api_view(['DELETE'])
+@permission_classes([AllowAny])
+def delete_cart_product(request,productId):
+    print("Authorization Header:", request.headers.get('Authorization'))
+    if not request.user.is_authenticated:
+        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+    try:
+        # Retrieve the Client instance associated with the logged-in user
+        client = Client.objects.get(pk=request.user.pk)
+    except Client.DoesNotExist:
+        return Response({'error': 'Client not found for the current user'}, status=status.HTTP_404_NOT_FOUND)
+
+
+    try:
+        user_panier = Panier.objects.get(client=client)
+        produit = Produit.objects.get(id_produit=productId)
+        panier_produit = PanierProduit.objects.get(panier= user_panier,produit=produit )
+    except PanierProduit.DoesNotExist:
+        return Response({'error': 'Cart item not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    panier_produit.delete()
+    return Response({'message': 'Product removed from cart successfully.'}, status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_order_view(request):
+    """
+    Handle POST requests to create an order with delivery details.
+    """
+    print(request.body)
+    commande = None 
+    if not request.user.is_authenticated:
+        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+    try:
+        client = Client.objects.get(pk=request.user.pk)
+    except Client.DoesNotExist:
+        return Response({'error': 'Client not found for the current user'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        panier_id = request.data.get('cart_id')  
+        delivery_data = {
+            "phone_number": request.data.get("phone_number"),
+            "country": request.data.get("country"),
+            "region": request.data.get("region"),
+            "cartier": request.data.get("cartier"),
+            "methode_livraison": request.data.get("methode_livraison", "standard"),
+            "adresse_livraison": request.data.get("adresse_livraison"),
+            "frais_livraison": request.data.get("frais_livraison", 0),
+        }
+
+        if not panier_id:
+            return Response(
+                {"error": "Panier ID is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            panier = Panier.objects.get(id=panier_id)
+        except Panier.DoesNotExist:
+            return Response(
+                {"error": "The specified panier does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if panier.client != client:
+            return Response(
+                {"error": "The panier does not belong to the authenticated user."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        commande = Commande.objects.create(client=client, panier=panier)
+
+        livraison = Livraison.objects.create(
+            commande=commande,
+            date_estime=request.data.get("date_estime"),
+            phone_number=delivery_data["phone_number"],
+            country=delivery_data["country"],
+            region=delivery_data["region"],
+            cartier=delivery_data["cartier"],
+            methode_livraison=delivery_data["methode_livraison"],
+            adresse_livraison=delivery_data["adresse_livraison"],
+            frais_livraison=delivery_data["frais_livraison"],
+        )
+
+        return Response(
+            {
+                "message": "Order successfully created.",
+                "commande_id": commande.id,
+                "total": commande.total(),
+                "livraison": {
+                    "phone_number": livraison.phone_number,
+                    "country": livraison.country,
+                    "region": livraison.region,
+                    "cartier": livraison.cartier,
+                    "adresse_livraison": livraison.adresse_livraison,
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    except Exception as e:
+        if commande:
+            commande.delete()
+
+        return Response(
+            {"error": f"An unexpected error occurred: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

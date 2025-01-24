@@ -15,6 +15,13 @@ urlpatterns = [
     # Metiers
     path('api/metiers/', views.list_metiers, name='list_metiers'),
     path('api/metiers/<int:pk>/', views.get_metier_detail , name='get_metier_detail'),
+    #panier
+    path('api/panier/', views.get_cart_detail, name='list_panier'),
+    path('api/panier/add', views.add_to_cart, name='add_to_cart'),
+    path('api/panier/update/<int:product_id>/', views.update_cart_product_quantity, name='update_quantity'),
+    path('api/panier/delete/<int:productId>', views.delete_cart_product, name='add_to_cart'),
+    #orders
+    path('api/create-order/', views.create_order_view, name='order_cart'),
 
     #to get all profs
     path('api/professionals/', views.list_professionals, name='list_professionals'),
@@ -38,8 +45,8 @@ urlpatterns = [
 
     #annonces
     path('api/annonces/create/', views.create_annonce_view, name='create_annonce'), 
-    path('api/annonces/<int:id_prof>/', views.list_annonces_view, name='list_annonces'),  
-    path('api/annonces/<int:annonce_id>/delete/', views.delete_annonce_view, name='delete_annonce'),  
+    path('api/annonces/<int:id_prof>/', views.list_annonces_view, name='list_annonces'), # not implemented in the fron_end yet 
+    path('api/annonces/<int:annonce_id>/delete/', views.delete_annonce_view, name='delete_annonce'),  # not implemented in the fron_end yet 
     #rechercher
     path('api/professionals/search/', views.search_professionals, name='search_professionals'),
     
@@ -56,6 +63,7 @@ urlpatterns = [
 
     path('api/marketplaces/', MarketPlaces, name='marketplace-list'),
     path('api/marketplaces/<int:pk>/', MarketplaceDetail, name='marketplace-detail'),
+    path('api/marketplaces/test/', get_market_owner, name='marketplace-detail'),
 
     path('api/marketplace/<int:marketplace_id>/add-avis/', add_avis, name='add-avis'),
     path('api/marketplace/<int:marketplace_id>/add-annonce/', add_annonce, name='add-annonce'),

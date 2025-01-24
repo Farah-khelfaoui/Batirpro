@@ -161,7 +161,10 @@ class MarketMemberSerializer(serializers.ModelSerializer):
         market_member = MarketMember.objects.create(client=client, **validated_data)
         return market_member
 
-
+class MarketOwnerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Marketowner
+        fields = ['id_marketowner', 'client', 'adresse', 'current_marketplace', 'join']
 
 class AvisProduitSerializer(serializers.ModelSerializer):
     client = ClientSerializer(read_only=True)
@@ -180,3 +183,75 @@ class ProduitSerializer(serializers.ModelSerializer):
         fields = ['id_produit', 'nom', 'description', 'prix', 'disponibilite_stock', 
                   'categorie', 'dimension', 'poids', 'materiaux', 'image_url','note', 'marketplace','avis']
         read_only_fields = ['id_produit']
+
+
+
+from rest_framework import serializers
+from .models import Panier, PanierProduit, Produit
+
+class PanierProduitSerializer(serializers.ModelSerializer):
+    produit_nom = serializers.CharField(source='produit.nom')
+    produit_image_url = serializers.CharField(source='produit.image_url')
+    produit_prix = serializers.DecimalField(source='produit.prix', max_digits=10, decimal_places=2)  # Include product price
+
+
+    class Meta:
+        model = PanierProduit
+        fields = ['id', 'produit_nom', 'produit_image_url','produit_prix', 'quantite', 'produit']
+
+class PanierSerializer(serializers.ModelSerializer):
+    produits = PanierProduitSerializer(many=True)
+
+    class Meta:
+        model = Panier
+        fields = ['id', 'client', 'date_creation', 'produits']
+
+
+class LivraisonSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Livraison
+        fields = [
+            'phone_number',
+            'country',
+            'region',
+            'cartier',
+            'methode_livraison',
+            'adresse_livraison',
+            'frais_livraison',
+            'date_estime',
+        ]
+
+    # Ensure the date_estime is 3 weeks ahead of order date
+    def validate_date_estime(self, value):
+        from datetime import timedelta
+        from django.utils import timezone
+
+        # Assuming the date_estime is provided by the client
+        date_estime = timezone.datetime.strptime(value, "%Y-%m-%d").date()
+        current_date = timezone.now().date()
+
+        # Add 3 weeks to the current date
+        if date_estime < current_date + timedelta(weeks=3):
+            raise serializers.ValidationError("Date estimation must be at least 3 weeks after today.")
+        return value
+
+
+from .models import Commande
+from .models import Panier
+from rest_framework import serializers
+
+class CommandeSerializer(serializers.ModelSerializer):
+    livraison = LivraisonSerializer()
+
+    class Meta:
+        model = Commande
+        fields = ['client', 'panier', 'livraison']
+
+    def create(self, validated_data):
+        livraison_data = validated_data.pop('livraison')
+        commande = Commande.objects.create(**validated_data)
+
+        # Create the associated Livraison
+        Livraison.objects.create(commande=commande, **livraison_data)
+
+        return commande

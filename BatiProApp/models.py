@@ -179,7 +179,7 @@ class Marketplace(models.Model):
         return round(average, 1) if average else 0.0  # Retourne 0.0 si aucun avis n'existe
 
     def __str__(self):
-        return self.nom
+        return f"{self.nom} - {self.id_marketplace}"
 
 
 class Marketowner(models.Model):
@@ -289,9 +289,15 @@ class Livraison(models.Model):
     methode_livraison = models.CharField(max_length=20)  # "standard", "express", etc.
     adresse_livraison = models.CharField(max_length=100)
     frais_livraison = models.DecimalField(max_digits=10, decimal_places=2)
-    statut = models.CharField(max_length=50, default='en préparation')  # "en préparation", "expédiée", "livrée", etc.
+    statut = models.CharField(max_length=50, default='en préparation') 
+    phone_number = models.CharField(max_length=15, null=True, blank=True)  
+    country = models.CharField(max_length=100, null=True, blank=True) 
+    region = models.CharField(max_length=100, null=True, blank=True)  
+    cartier = models.CharField(max_length=100, null=True, blank=True) 
+
     def total(self):
-        return self.frais_livraison+self.commande.total()
+        return self.frais_livraison + self.commande.total()
+
     def __str__(self):
         return f"Livraison {self.commande.id} - {self.statut}"
 
